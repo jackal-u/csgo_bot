@@ -1,7 +1,9 @@
 from PIL import Image as im
 import numpy as np
 
-
+# 目前只做了cache一张地图。通过一张网上cache的截图，将其缩小后二值化处理成为一张二维数组（网格化）。1 代表可通行，0代表障碍物。
+# 二维数组的元素为list，list结构 [0/1 x坐标 y坐标]，二维数组元素的行列index，与坐标是一一对应关系。
+# 另一种更为优雅的方式是采用navmesh方法把地图分块。
 def print_bitmap(bit_map:np.array, target:tuple):
     sz = bit_map.shape
     (t_r, t_c) = target

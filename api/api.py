@@ -39,6 +39,9 @@ class CSAPI:
         self.dwClientState_GetLocalPlayer = int(off_set_dict["signatures"]["dwClientState_GetLocalPlayer"])
         self.client_dll = 0
         self.handle = 0
+        self.m_hActiveWeapon = int(off_set_dict["netvars"]["m_hActiveWeapon"])
+        self.m_bSpotted = int(off_set_dict["netvars"]["m_bSpotted"])
+        self.m_lifeState = int(off_set_dict["netvars"]["m_lifeState"])
         self.m_bDormant =int(off_set_dict["signatures"]["m_bDormant"])
         self.m_hMyWeapons = int(off_set_dict["netvars"]["m_hMyWeapons"])
         self.m_angEyeAnglesX = int(off_set_dict["netvars"]["m_angEyeAnglesX"])
@@ -51,6 +54,7 @@ class CSAPI:
         self.dwClientState_ViewAngles = int(off_set_dict["signatures"]["dwClientState_ViewAngles"])
         self.m_vecOrigin = int(off_set_dict["netvars"]["m_vecOrigin"])
         self.m_vecViewOffset = int(off_set_dict["netvars"]["m_vecViewOffset"])
+        self.m_iClip1= int(off_set_dict["netvars"]["m_iClip1"])
         self.dwLocalPlayer = int(off_set_dict["signatures"]["dwLocalPlayer"])
         self.dwForceAttack = int(off_set_dict["signatures"]["dwForceAttack"])
         self.dwForceAttack2 = int(off_set_dict["signatures"]["dwForceAttack2"])
@@ -59,6 +63,8 @@ class CSAPI:
         self.dwForceLeft = int(off_set_dict["signatures"]["dwForceLeft"])
         self.dwForceRight = int(off_set_dict["signatures"]["dwForceRight"])
         self.dwForceJump = int(off_set_dict["signatures"]["dwForceJump"])
+        self.dwForceCrouch = int(off_set_dict["signatures"]["dwForceJump"]) + 0x24
+        self.dwForceReload = int(off_set_dict["signatures"]["dwForceJump"]) + 0x30
         self.m_iItemDefinitionIndex=int(off_set_dict["netvars"]["m_iItemDefinitionIndex"])
         self.is_fire = 0
 
@@ -135,7 +141,7 @@ class CSAPI:
             local_add = self.handle.read_bytes(self.client_dll+self.dwLocalPlayer, 4)
             local_add = int.from_bytes(local_add, byteorder='little')
             # print(local_add)
-            weapon_list=[0 for _ in range(8)]
+            weapon_list = [0 for _ in range(8)]
             for i in range(8):
                 # 武器数组array遍历获得武器引用。
                 weapon_each = self.handle.read_bytes(local_add + self.m_hMyWeapons + i * 0x4, 4)
@@ -355,7 +361,6 @@ class CSAPI:
         return list
 
 
-
     def set_attack2(self):
         # 测试中，无作用
         self.handle.write_int(self.client_dll + self.dwForceAttack2, -1)
@@ -363,9 +368,10 @@ class CSAPI:
     def set_attack(self, i):
         # 测试中，无作用
         self.is_fire = int(i)
-        self.handle.write_int(self.client_dll + self.dwForceAttack, i)
+        if int(i) == 6:
+            self.handle.write_int(self.client_dll + self.dwForceAttack, int(i))
 
-    def set_aim_to(self, to_pos_list):
+    def set_aim_to(self, to_pos_list, mode=None):
         # [to_x, to_y, to_z]
         pos = self.get_current_position()
         posx = pos[0]
@@ -398,10 +404,17 @@ class CSAPI:
 
         enginepointer = self.handle.read_uint(self.off_enginedll + self.dwClientState)
         try:
-            self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch)
-            self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw)
+            if mode == "walk":
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch-30)
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw+5)
+
+            else:
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch)
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw)
         except TypeError:
             pass
+
+
     # import math
     # def instant_stop(self):
     #     local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
@@ -431,8 +444,9 @@ class CSAPI:
                     pass
                 else:
                     # 敌军
-                    if not self.handle.read_int(entity + self.m_bDormant):
+                    if not self.handle.read_int(entity + self.m_bDormant) and self.handle.read_int(entity + self.m_bSpotted):
                         #print("seeing enemy")
+                        # print(self.handle.read_int(entity + self.m_bSpotted))
                         aimplayerbones = self.handle.read_uint(entity + self.m_dwBoneMatrix)
                         enemypos1 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x0C)
                         enemypos2 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x1C)
@@ -440,12 +454,22 @@ class CSAPI:
                         list.append(enemypos1)
                         list.append(enemypos2)
                         list.append(enemypos3)
+
         return list
 
     def instant_stop(self):
         v = self.get_velocity()
         while v > 3:
             self.set_walk([0,0,0,0,0,0])
+
+    def is_alive(self):
+        """
+        0 alive; 1 dead; 2 spawning
+        :return:
+        """
+        local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
+        alive = self.handle.read_uint(local_player + self.m_lifeState)
+        return alive
 
 
     def is_seeing_enemy(self):
@@ -454,20 +478,24 @@ class CSAPI:
         else:
             return True
 
-    def set_walk_to(self, to_pos_list, do_list):
+    def set_walk_to(self, to_pos_list, do_list, ends):
         # to_pos_list = [to_x, to_y, to_z], evens_func = [bool_fun, bool_func], end_do = do_func
         # walk to target position by W+jump
         # if vlocity<3 , jump
+        for end in ends:
+            if end():
+                for do in do_list:
+                    do()
+                print("stop walk for enemy spotted")
+                return False
         d = distance.euclidean(to_pos_list[0:2], self.get_current_position()[0:2])
-        while d > 30:
-            self.set_aim_to(to_pos_list)
+        while d > 25:
+            self.set_aim_to(to_pos_list, mode="walk" )#
             self.set_walk([1, 0, 0, 0, 0, 0])
             d = distance.euclidean(to_pos_list[0:2], self.get_current_position()[0:2])
             v = self.get_velocity()
             if v < 2:
                 self.set_walk([1, 0, 0, 0, 1, 0])
-            for do in do_list:
-                do()
         self.set_walk([0, 1, 0, 0, 0, 0])
         self.set_walk([0, 0, 0, 0, 0, 0])
         print("walk done", to_pos_list, d)
@@ -571,6 +599,31 @@ class CSAPI:
         # enginepointer = self.handle.read_uint(self.off_enginedll + self.dwClientState)
         local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)  # local_player 和entity_list[0]都为玩家
         return abs(self.handle.read_float((local_player + self.m_vecVelocity + 0x4)))
+
+    def get_bullets(self, i: int):
+        """
+        i = 0 knife, 1 pistol, 2 rifle, 10 current
+        :param i:
+        :return:
+        """
+        local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
+        if i == 10:
+            active_weapon = self.handle.read_uint(local_player + self.m_hActiveWeapon) & 0xfff
+            weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (active_weapon - 1) * 0x10, 4)
+            weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
+            bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
+
+            return bullets_num
+        else:
+
+            # 武器数组array遍历获得武器引用。
+            weapon_list = [self.handle.read_bytes(local_player + self.m_hMyWeapons + i * 0x4, 4) for i in range(8)]
+            weapon_list = [int.from_bytes(each, byteorder='little') & 0xfff for each in weapon_list]
+            weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (weapon_list[i] - 1) * 0x10, 4)
+            weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
+            bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
+            return bullets_num
+
 
     def get_reward(self):
         """
@@ -722,9 +775,16 @@ class CSAPI:
     def shoot(self):
         # self.instant_stop()
         enemy = self.seeing_enemy()[0:3]
+        if self.get_bullets(10) < 3:
+            self.handle.write_int(self.client_dll + self.dwForceReload, 1)
+            time.sleep(0.05)
+            self.handle.write_int(self.client_dll + self.dwForceReload, 0)
+
         if len(enemy) != 0:
             self.set_aim_to(enemy)
-            self.set_attack(1)
+            print("shoot")
+            self.set_attack(6)
+
 
 if __name__ == '__main__':
     handle = CSAPI(r"D:\PROJECT\BOT\api\csgo.json")
@@ -732,8 +792,9 @@ if __name__ == '__main__':
     #
     while True:
         # print(handle.set_walk([1,0,0,0,0,0]))
-        handle.set_walk_to([3300.9967857142856, 285.16, 0], [handle.shoot])
-        time.sleep(0.1)
+        # handle.set_walk_to([3300.9967857142856, 285.16, 0], [handle.shoot])
+        handle.is_alive()
+        time.sleep(0.2)
 
 
 
