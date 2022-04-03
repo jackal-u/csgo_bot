@@ -35,10 +35,16 @@ class CSAPI:
         with open(path) as conf:
             off_set_dict=json.load(conf)
         self.dwEntityList = int(off_set_dict["signatures"]["dwEntityList"])
+        self.m_bGunGameImmunity = int(off_set_dict["netvars"]["m_bGunGameImmunity"])
         self.m_iHealth = int(off_set_dict["netvars"]["m_iHealth"])
         self.dwClientState_GetLocalPlayer = int(off_set_dict["signatures"]["dwClientState_GetLocalPlayer"])
         self.client_dll = 0
         self.handle = 0
+        self.aim_y = 0
+        self.aim_x = 0
+        self.step = 0
+        self.m_bSpottedByMask = int(off_set_dict["netvars"]["m_bSpottedByMask"])
+        self.m_aimPunchAngle = int(off_set_dict["netvars"]["m_aimPunchAngle"])
         self.m_hActiveWeapon = int(off_set_dict["netvars"]["m_hActiveWeapon"])
         self.m_bSpotted = int(off_set_dict["netvars"]["m_bSpotted"])
         self.m_lifeState = int(off_set_dict["netvars"]["m_lifeState"])
@@ -173,6 +179,8 @@ class CSAPI:
         view_x = self.handle.read_float((client_state + self.dwClientState_ViewAngles))
         view_y = self.handle.read_float((client_state + self.dwClientState_ViewAngles + 0x4))
 
+        print("client_state", client_state)
+        print("view_x, view_y", view_x, view_y)
         list = []
         # if entity != 0:
         #     x = self.handle.read_int((entity + self.m_angEyeAnglesX))
@@ -360,7 +368,6 @@ class CSAPI:
                         counter+=1
         return list
 
-
     def set_attack2(self):
         # 测试中，无作用
         self.handle.write_int(self.client_dll + self.dwForceAttack2, -1)
@@ -373,6 +380,9 @@ class CSAPI:
 
     def set_aim_to(self, to_pos_list, mode=None):
         # [to_x, to_y, to_z]
+        local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
+        punchx = self.handle.read_float(local_player + self.m_aimPunchAngle)
+        punchy = self.handle.read_float(local_player + self.m_aimPunchAngle + 0x4)
         pos = self.get_current_position()
         posx = pos[0]
         posy = pos[1]
@@ -409,8 +419,8 @@ class CSAPI:
                 self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw+5)
 
             else:
-                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch)
-                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw)
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch - punchx*2)
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw - punchy*2)
         except TypeError:
             pass
 
@@ -439,14 +449,49 @@ class CSAPI:
             if entity != 0:  # 实体非自己，则进行处理
                 team = self.handle.read_int(entity + self.m_iTeamNum)
                 # 实体 + 队伍偏移 == local_player + 队伍偏移 来判断是否是友军
-                if my_team == team:
-                    # 友军
-                    pass
-                else:
+                if my_team != team:
                     # 敌军
-                    if not self.handle.read_int(entity + self.m_bDormant) and self.handle.read_int(entity + self.m_bSpotted):
-                        #print("seeing enemy")
-                        # print(self.handle.read_int(entity + self.m_bSpotted))
+                    # 如被发现，拿出这个活着的敌人的引用，然后加入list
+                    spot = str(bin(self.handle.read_int(entity + self.m_bSpottedByMask)))
+                    if bool(int(spot[-1])):  # spotted 是是否被队友看到； spottedbymask(二进制) 是被那些人看到
+                        # print("m_bSpottedByMask", spot, bool(int(spot[-1])), entity)
+                        if not self.handle.read_uint(entity + self.m_lifeState):
+                            print("entity", entity)   # 1253461584
+                            print("immune", self.handle.read_float(entity + self.m_bGunGameImmunity) <= 0.0001)
+                            aimplayerbones = self.handle.read_uint(entity + self.m_dwBoneMatrix)
+                            enemypos1 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x0C)
+                            enemypos2 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x1C)
+                            enemypos3 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x2C)
+                            list.append(enemypos1)
+                            list.append(enemypos2)
+                            list.append(enemypos3)
+
+
+        return list
+
+
+    def test_ob(self):
+        """
+                :return:看到的敌人 位置数组 三个一组
+                """
+        # list=[0 for i in range(15)]
+        list = []
+        aimlocalplayer = self.handle.read_int(self.client_dll + self.dwLocalPlayer)
+        # 得到敌人的偏移
+        my_team = self.handle.read_int(aimlocalplayer + self.m_iTeamNum)
+        for i in range(64):
+            entity = self.handle.read_bytes(self.client_dll + self.dwEntityList + i * 0x10, 4)  # 10为每个实体的偏移
+            entity = int.from_bytes(entity, byteorder='little')
+            if entity != 0:  # 实体非自己，则进行处理
+                team = self.handle.read_int(entity + self.m_iTeamNum)
+                # 实体 + 队伍偏移 == local_player + 队伍偏移 来判断是否是友军
+                if my_team != team:
+                    # 敌军
+                    # 如被发现，拿出这个敌人的引用，然后加入list
+                    spot = str(bin(self.handle.read_int(entity + self.m_bSpottedByMask)))
+                    # print("m_bSpottedByMask", spot, bool(int(spot[-1])), entity)
+                    if bool(int(spot[-1])):   # spotted 是是否被队友看到； spottedbymask(二进制) 是被那些人看到
+                        print("m_bSpottedByMask", spot, bool(int(spot[-1])), entity)
                         aimplayerbones = self.handle.read_uint(entity + self.m_dwBoneMatrix)
                         enemypos1 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x0C)
                         enemypos2 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x1C)
@@ -454,8 +499,8 @@ class CSAPI:
                         list.append(enemypos1)
                         list.append(enemypos2)
                         list.append(enemypos3)
+        print(list)
 
-        return list
 
     def instant_stop(self):
         v = self.get_velocity()
@@ -486,10 +531,16 @@ class CSAPI:
             if end():
                 for do in do_list:
                     do()
-                print("stop walk for enemy spotted")
+                print("stop walk for enemy spotted/dead")
                 return False
         d = distance.euclidean(to_pos_list[0:2], self.get_current_position()[0:2])
-        while d > 25:
+        while d > 35:
+            for end in ends:
+                if end():
+                    for do in do_list:
+                        do()
+                    print("stop walk for enemy spotted")
+                    return False
             self.set_aim_to(to_pos_list, mode="walk" )#
             self.set_walk([1, 0, 0, 0, 0, 0])
             d = distance.euclidean(to_pos_list[0:2], self.get_current_position()[0:2])
@@ -770,8 +821,8 @@ class CSAPI:
                 """
         list =  self.get_current_xy() + self.get_current_position() + self.get_enemy_position_single() + [self.get_reward()]
         return list
-
-
+    def test(self):
+        print(self.handle.read_int(1253461584+self.m_bSpotted))
     def shoot(self):
         # self.instant_stop()
         enemy = self.seeing_enemy()[0:3]
@@ -782,7 +833,7 @@ class CSAPI:
 
         if len(enemy) != 0:
             self.set_aim_to(enemy)
-            print("shoot")
+            print("shoot enemy", enemy)
             self.set_attack(6)
 
 
@@ -793,7 +844,9 @@ if __name__ == '__main__':
     while True:
         # print(handle.set_walk([1,0,0,0,0,0]))
         # handle.set_walk_to([3300.9967857142856, 285.16, 0], [handle.shoot])
-        handle.is_alive()
+        # handle.set_aim_to([680.9183349609375, 1590.7235107421875, 1740.15966796875])
+        # print(handle.seeing_enemy())
+        print(handle.test_ob())
         time.sleep(0.2)
 
 

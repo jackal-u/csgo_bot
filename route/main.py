@@ -57,8 +57,10 @@ def find_kids(current_node: tuple, visited_nodes_pos: set, m: np.array, explored
     :param m:
     :return: kids = [kid], kid=(father, pos)
     """
+    walk_ways = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+    random.shuffle(walk_ways)
     kids = [(current_node, (current_node[1][0] + move[0], current_node[1][1] + move[1])) for move in
-            [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]]
+              walk_ways]
     f_kids = []
     for each in kids:
 
