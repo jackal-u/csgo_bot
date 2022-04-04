@@ -107,7 +107,7 @@ class Bot(object):
 
 
 if __name__ == "__main__":
-    handle = api.CSAPI(r"D:\PROJECT\BOT\api\csgo.json")
+    handle = api.CSAPI(r"./api/csgo.json")
     cache = map_grid.Map("de_cache")
     time.sleep(0.1)
     bot = Bot(cache, handle)
