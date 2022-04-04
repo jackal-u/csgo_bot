@@ -453,11 +453,10 @@ class CSAPI:
                     # 敌军
                     # 如被发现，拿出这个活着的敌人的引用，然后加入list
                     spot = str(bin(self.handle.read_int(entity + self.m_bSpottedByMask)))
-                    if bool(int(spot[-1])):  # spotted 是是否被队友看到； spottedbymask(二进制) 是被那些人看到
-                        # print("m_bSpottedByMask", spot, bool(int(spot[-1])), entity)
+                    # spottedbymask(二进制) 是指当前实体那些人看到; 返回值 0b0000001 从右往左数 第一个为玩家；
+                    if bool(int(spot[-1])) or self.get_spy_entity() == entity:   # https://guidedhacking.com/threads/csgo-how-to-use-m_bspottedbymask-visibility-check.13950/
+                        # 如果敌人被我看到 or 如果这个人看到了我=====>进入死亡名单
                         if not self.handle.read_uint(entity + self.m_lifeState):
-                            print("entity", entity)   # 1253461584
-                            print("immune", self.handle.read_float(entity + self.m_bGunGameImmunity) <= 0.0001)
                             aimplayerbones = self.handle.read_uint(entity + self.m_dwBoneMatrix)
                             enemypos1 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x0C)
                             enemypos2 = self.handle.read_float(aimplayerbones + 0x30 * 1 + 0x1C)
@@ -821,8 +820,47 @@ class CSAPI:
                 """
         list =  self.get_current_xy() + self.get_current_position() + self.get_enemy_position_single() + [self.get_reward()]
         return list
-    def test(self):
-        print(self.handle.read_int(1253461584+self.m_bSpotted))
+
+
+    def get_spy_index(self):
+        """
+        读取 本地玩家的spottedbymask属性
+        spottedbymask解释：
+            如果当前玩家没被人发现，返回 ['0',  'b', '0']
+            如果在4个敌人的对局中，被第3个敌人发现，返回 ['0','0', '1', '0', 'b', '0']
+        这个函数，返回第一个 发现玩家的敌人index。 上例子中，为 “2”
+
+        那么spotted属性是什么? 是指当前对象是否被被自己和同伴发现
+        :return:
+        """
+        local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)  # local_player 和entity_list[0]都为玩家
+        spot_list = list(bin(self.handle.read_int(local_player + self.m_bSpottedByMask)))
+        spot_list.reverse()
+        for index, each_ob in enumerate(spot_list):
+            if len(spot_list) == 3:  # 不被人发现，返回NONE
+                return None
+            if each_ob == '1':  # 被人发现，返回index
+                return index
+
+
+    def get_spy_entity(self):
+        """
+        返回第一个看到玩家的敌人的引用(内存地址);
+        可参照get_spy_index方法
+        :return:
+        """
+        index = self.get_spy_index()
+        if index is not None:
+            entity = self.handle.read_bytes(self.client_dll + self.dwEntityList + index * 0x10, 4)
+            entity = int.from_bytes(entity, byteorder='little')
+            return entity
+        return None
+
+
+
+        print("done")
+
+
     def shoot(self):
         # self.instant_stop()
         enemy = self.seeing_enemy()[0:3]
@@ -846,7 +884,7 @@ if __name__ == '__main__':
         # handle.set_walk_to([3300.9967857142856, 285.16, 0], [handle.shoot])
         # handle.set_aim_to([680.9183349609375, 1590.7235107421875, 1740.15966796875])
         # print(handle.seeing_enemy())
-        print(handle.test_ob())
+        print(handle.get_spy_entity())
         time.sleep(0.2)
 
 
