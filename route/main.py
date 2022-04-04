@@ -1,9 +1,6 @@
-from mazelib import Maze
-from mazelib.generate.Prims import Prims
 import queue, copy, operator
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
-from mazelib.solve.BacktrackingSolver import BacktrackingSolver
 import numpy as np
 import random
 
