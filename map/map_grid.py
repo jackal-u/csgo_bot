@@ -69,7 +69,7 @@ class Map:
     def __init__(self, name):
         self.sz = (214, 156)
         self.name = name
-        self.path = r".\dir\{}.png".format(self.name)
+        self.path = r".\map\dir\{}.png".format(self.name)
         image = preprocess(self.path, self.sz)
         bit_map = image_to_nparray(image)
         # print_bitmap(bit_map, (78, 211))
