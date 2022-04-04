@@ -1,7 +1,7 @@
 ### CSGO bot大战参考代码
 
 #### 如何使用
-"""sh
+
 1.调试好游戏环境
     游戏窗口化
     游戏切换为de_cache地图的死亡竞赛经典模式
@@ -9,7 +9,7 @@
 2.开启bot
     在pycharm中直接运行main.py
     或python main.py
-"""
+
 
 
 #### 依赖
