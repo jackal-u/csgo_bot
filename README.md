@@ -6,7 +6,7 @@
 
     游戏窗口化
     游戏切换为de_cache地图的死亡竞赛经典模式
-    控制台输入 mp_roundtime 60; mp_restartround 1;
+    控制台输入 mp_roundtime 60; mp_restartgame 1;
 
 2.开启bot
 
