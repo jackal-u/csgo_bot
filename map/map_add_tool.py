@@ -34,7 +34,7 @@ def preprocess(path, sz, thresh):
     imgSmall = img.resize(sz, resample=im.LANCZOS)
     filter = lambda x: 255 if x > thresh else 0
     imgSmall = imgSmall.convert('L').point(filter, mode='1')
-    #imgSmall.show()
+    imgSmall.show()
     return imgSmall
 
 
@@ -82,7 +82,7 @@ class Map:
             self.threshold = conf["threshold"]
         image = preprocess(self.path, self.sz, self.threshold)
         bit_map = image_to_nparray(image)
-        # print_bitmap(bit_map, (187, 129)) # cl_showpos 1 来手动标定point1、2
+        print_bitmap(bit_map, (187, 129))  # cl_showpos 1 来手动标定point1、2
 
         self.bit_map, self.dx, self.dy = generate_from_point(bit_map, self.point1, self.point2)
 
@@ -95,6 +95,15 @@ if __name__ == "__main__":
     # sz = (107, 78)  # (210, 140) 一行180个像素，不是180行
     # path = r"D:\PROJECT\BOT\map\dir\cache2.png"
     #
+    """
+    # print_bitmap(bit_map, (187, 129)) # cl_showpos 1 来手动标定point1、2
+    (187, 129)更换为你想要的点；
+    游戏中cl_showpos 1 来展示你的位置
+    点和位置对应，就是point1、2
+    选择两个point 手动写入到 de_地图.json中便可！
+    """
+
+
     cache = Map("de_dust2")
 
 
