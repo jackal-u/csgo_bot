@@ -26,16 +26,15 @@ def find_nearst_pos(handle, bit_map, dx, dy, point1):
 
 
 def get_nearest_way_point(way_points: list, cur: tuple):
+    print("get_nearest_way_point")
     dis = [route.manhattan(cur, point) for point in way_points]
-    print("dis",dis)
+    print("dis", dis)
     print("way_points", way_points)
+    print("give", way_points[dis.index(min(dis))], dis.index(min(dis)))
     return way_points[dis.index(min(dis))], dis.index(min(dis))
 
 
 from route import main as path_find
-
-
-
 import numpy as np
 
 
@@ -44,14 +43,11 @@ class Bot(object):
         self.path = []
         self.handle = handle
         self.bit_map, self.dx, self.dy, self.point1 = map.bit_map, map.dx, map.dy, map.point1
-        self.way_points = [  (95, 124),  (82, 114), (77, 66), (33, 60), (47, 32), (91, 36),
-                      (132, 39), (119, 86), (137, 105), (126, 117), (106, 114), (93, 127), (67, 142), (98, 175)]
+        self.way_points = [tuple(each) for each in map.way_points]
         self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
         self.is_alive = not handle.is_alive()
         self.is_seeing_enemy = self.handle.is_seeing_enemy()
         self.bullets = self.handle.get_bullets(10)
-
-
 
     def update_bot(self):
         self.handle.set_walk([0,0,0,0,0,0])
@@ -81,22 +77,23 @@ class Bot(object):
         if cv2.waitKey(25) and 0xFF == ord("q"):
             cv2.destroyAllWindows()
 
-
     def reroute(self):
+        print("rerote")
         near, near_index = get_nearest_way_point(self.way_points, self.cur_pos)
-        way_points = self.way_points[near_index:-1] + self.way_points[0:near_index]
-        print("way_points", way_points)
+        way_points = self.way_points[near_index:-1] + self.way_points[0:near_index+1]
         self.way_points = way_points
 
     def patrol(self):
         if self.is_seeing_enemy or self.is_alive is False:
+            print("patrol done")
             print(self.is_seeing_enemy, "is_seeing_enemy")
             print(self.is_alive, "self.is_alive")
+            self.reroute()
             return
         for desti in self.way_points:
             self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
             start, end = ((-1, -1), self.cur_pos), ((-1, -1), desti)
-            print("rounting ", self.cur_pos)
+            print("rounting ", self.cur_pos, "to", desti)
             self.path = path_find.solve_maze_a_star(start, end, self.bit_map)
             self.draw_routes()
             for each in self.path:
@@ -108,9 +105,9 @@ class Bot(object):
 
 if __name__ == "__main__":
     handle = api.CSAPI(r"./api/csgo.json")
-    cache = map_grid.Map("de_cache")
+    de_dust2 = map_grid.Map("de_dust2")
     time.sleep(0.1)
-    bot = Bot(cache, handle)
+    bot = Bot(de_dust2, handle)
 
     # 玩具代码，尽管把玩随便改。 很多实现由于鄙人水平原因有些笨拙，各位有兴趣可以自己用FSM写一个。
     # 地图抽象是依靠一张网图，如果出现bot 日墙，可能是地图精准不够。 你可以重新定位一下。在map类中找新坐标便可。
@@ -119,9 +116,11 @@ if __name__ == "__main__":
         try:
             bot.update_bot()
             if not bot.is_alive:
+                print("im dead, reroute")
                 bot.reroute()
             if bot.is_seeing_enemy:
                 bot.handle.shoot()
+                bot.reroute()
                 continue
             print("way points", bot.way_points)
             bot.draw_routes()

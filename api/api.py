@@ -43,6 +43,7 @@ class CSAPI:
         self.aim_y = 0
         self.aim_x = 0
         self.step = 0
+        self.m_flTimerLength = int(off_set_dict["netvars"]["m_flTimerLength"]),
         self.m_bSpottedByMask = int(off_set_dict["netvars"]["m_bSpottedByMask"])
         self.m_aimPunchAngle = int(off_set_dict["netvars"]["m_aimPunchAngle"])
         self.m_hActiveWeapon = int(off_set_dict["netvars"]["m_hActiveWeapon"])
@@ -415,7 +416,7 @@ class CSAPI:
         enginepointer = self.handle.read_uint(self.off_enginedll + self.dwClientState)
         try:
             if mode == "walk":
-                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), pitch-30)
+                self.handle.write_float((enginepointer + self.dwClientState_ViewAngles), 0.5)
                 self.handle.write_float((enginepointer + self.dwClientState_ViewAngles + 0x4), yaw+5)
 
             else:
@@ -656,24 +657,28 @@ class CSAPI:
         :param i:
         :return:
         """
-        local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
-        if i == 10:
-            active_weapon = self.handle.read_uint(local_player + self.m_hActiveWeapon) & 0xfff
-            weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (active_weapon - 1) * 0x10, 4)
-            weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
-            bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
+        try:
+            local_player = self.handle.read_uint(self.client_dll + self.dwLocalPlayer)
+            if i == 10:
+                active_weapon = self.handle.read_uint(local_player + self.m_hActiveWeapon) & 0xfff
+                weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (active_weapon - 1) * 0x10, 4)
+                weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
+                bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
 
-            return bullets_num
-        else:
+                return bullets_num
+            else:
 
-            # 武器数组array遍历获得武器引用。
-            weapon_list = [self.handle.read_bytes(local_player + self.m_hMyWeapons + i * 0x4, 4) for i in range(8)]
-            weapon_list = [int.from_bytes(each, byteorder='little') & 0xfff for each in weapon_list]
-            weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (weapon_list[i] - 1) * 0x10, 4)
-            weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
-            bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
-            return bullets_num
-
+                # 武器数组array遍历获得武器引用。
+                weapon_list = [self.handle.read_bytes(local_player + self.m_hMyWeapons + i * 0x4, 4) for i in range(8)]
+                weapon_list = [int.from_bytes(each, byteorder='little') & 0xfff for each in weapon_list]
+                weapon_meta = self.handle.read_bytes(self.client_dll + self.dwEntityList + (weapon_list[i] - 1) * 0x10, 4)
+                weapon_meta = int.from_bytes(weapon_meta, byteorder='little')
+                bullets_num = self.handle.read_uint(weapon_meta + self.m_iClip1)
+                return bullets_num
+        except:
+            import traceback
+            traceback.print_exc()
+            return 30
 
     def get_reward(self):
         """
@@ -857,9 +862,8 @@ class CSAPI:
         return None
 
 
-
-        print("done")
-
+    def test(self):
+        print(self.handle.read_float(self.client_dll + self.m_flTimerLength, ))
 
     def shoot(self):
         # self.instant_stop()
@@ -884,7 +888,7 @@ if __name__ == '__main__':
         # handle.set_walk_to([3300.9967857142856, 285.16, 0], [handle.shoot])
         # handle.set_aim_to([680.9183349609375, 1590.7235107421875, 1740.15966796875])
         # print(handle.seeing_enemy())
-        print(handle.get_spy_entity())
+        handle.test()
         time.sleep(0.2)
 
 

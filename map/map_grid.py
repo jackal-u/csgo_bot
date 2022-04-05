@@ -79,6 +79,7 @@ class Map:
             self.sz = (int(conf['scale_size'][0]), int(conf['scale_size'][1]))
             self.point1 = conf["point1"]  # 1点在地图中[x, y, 位图中行和列(对应Y和X)]
             self.point2 = conf["point2"]  # 2点在地图中[x, y, 位图中行和列(对应Y和X)]
+            self.way_points = conf["way_points"]
             self.threshold = conf["threshold"]
         image = preprocess(self.path, self.sz, self.threshold)
         bit_map = image_to_nparray(image)

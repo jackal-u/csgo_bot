@@ -10,8 +10,8 @@ def click_event(event, x, y, flags, params):
     if event == cv2.EVENT_LBUTTONDOWN:
         # displaying the coordinates
         # on the Shell
-        print(x, ' ', y)
-        points.append([x,y])
+        print((y, x))
+        points.append([y, x])
         # displaying the coordinates
         # on the image window
         font = cv2.FONT_HERSHEY_SIMPLEX

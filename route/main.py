@@ -76,7 +76,7 @@ def find_kids(current_node: tuple, visited_nodes_pos: set, m: np.array, explored
             #     print("已访问节点")
             continue
         if each[1] in explored_nodes_pos:
-            print("已explore节点")
+            #print("已explore节点")
             continue
         f_kids.append((current_node, each[1]))
     # print("f_kids is",f_kids)
