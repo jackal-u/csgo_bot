@@ -81,6 +81,7 @@ class Map:
             self.point2 = conf["point2"]  # 2点在地图中[x, y, 位图中行和列(对应Y和X)]
             self.way_points = conf["way_points"]
             self.threshold = conf["threshold"]
+            self.bomb_sites = [tuple(each) for each in conf["bomb_site"]]
         image = preprocess(self.path, self.sz, self.threshold)
         bit_map = image_to_nparray(image)
         # print_bitmap(bit_map, (187, 129)) # cl_showpos 1 来手动标定point1、2

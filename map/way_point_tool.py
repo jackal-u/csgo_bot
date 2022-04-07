@@ -49,7 +49,7 @@ if __name__ == "__main__":
     配置好name, 鼠标左键点击地图，生成way_points
     """
     # 【配置我！！！】
-    name = "de_dust2"
+    name = "de_cache"
     # load config
     path = r".\dir\{}.png".format(name)
     conf_path = r".\dir\{}.json".format(name)

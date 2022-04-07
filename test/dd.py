@@ -1,6 +1,3 @@
-import time
+import random
 
-
-def fu(a):
-    time.sleep(5)
-    print("child end")
+print(random.randint(6,12)*0.1)
