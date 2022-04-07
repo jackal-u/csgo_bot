@@ -2,6 +2,7 @@ import json
 
 from PIL import Image as im
 import numpy as np
+import os
 
 
 # 地图下载地址：https://steamcommunity.com/sharedfiles/filedetails/?id=230110279
@@ -72,9 +73,10 @@ def generate_from_point(bit_map, point1, point2):
 class Map:
     def __init__(self, name):
         self.name = name
-        self.path = r".\map\dir\{}.png".format(self.name)
+        root_path = os.path.abspath(os.path.dirname(__file__)).split('csgo_bot')[0]+"csgo_bot"
+        self.path = root_path+r"\map\dir\{}.png".format(self.name)
 
-        with open(r".\map\dir\{}.json".format(self.name), "r") as f:
+        with open(root_path+r"\map\dir\{}.json".format(self.name), "r") as f:
             conf = json.load(f)
             self.sz = (int(conf['scale_size'][0]), int(conf['scale_size'][1]))
             self.point1 = conf["point1"]  # 1点在地图中[x, y, 位图中行和列(对应Y和X)]

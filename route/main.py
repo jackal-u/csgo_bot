@@ -108,7 +108,7 @@ def solve_maze_a_star(start: tuple, end: tuple, bitmap:np.array)->list:
         # pos = (row, column)
         # start, end = (None, (1, 1)), (None, (1, 5))
         h = heuristic(start[1], end[1])
-        print("path finding")
+        # print("path finding")
         q.put((0 + h, h, start))
         explored_nodes_pos = set()
         visited_nodes_pos = set()
@@ -131,7 +131,7 @@ def solve_maze_a_star(start: tuple, end: tuple, bitmap:np.array)->list:
         fin_path = []
         find_fin_path(fin_path, out)
         fin_path.reverse()
-        print(fin_path)
+        # print(fin_path)
         return fin_path
 
 
