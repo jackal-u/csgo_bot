@@ -240,18 +240,14 @@ class Bot(object):
             else:
                 self.follow_c4()
         else:
-            bot.handle.shoot()
+            bot.patrol()
+            # bot.handle.shoot()
 
     def ct(self):
         if not self.bomb_planted:
             self.patrol()
         else:
             self.goto_c4()
-
-
-
-
-
 
     def act(self):
         if self.team == 2:
@@ -265,6 +261,7 @@ if __name__ == "__main__":
     de_dust2 = map_grid.Map("de_dust2")
     time.sleep(0.1)
     bot = Bot(de_dust2, handle)
+    round = 0
 
     # 玩具代码，尽管把玩随便改。 很多实现由于鄙人水平原因有些笨拙，各位有兴趣可以自己用FSM写一个。
     # 地图抽象是依靠一张网图，如果出现bot 日墙，可能是地图精准不够。 你可以重新定位一下。在map类中找新坐标便可。

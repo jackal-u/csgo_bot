@@ -33,7 +33,7 @@ def g_value_cost(ele: tuple) -> float:
     # print("ele:", ele)
     if ele[0] == (-1, -1):
         return 0
-    return distance.euclidean(ele[0][1], ele[1]) + g_value_cost(ele[0])
+    return manhattan(ele[0][1], ele[1]) + g_value_cost(ele[0]) # mahhatan distance is better than euclid distance
 
 
 def find_fin_path(li: list, end: tuple) -> None:
@@ -113,21 +113,23 @@ def solve_maze_a_star(start: tuple, end: tuple, bitmap:np.array)->list:
         explored_nodes_pos = set()
         visited_nodes_pos = set()
         # is_end_found(visited_nodes,end):
+        t0 = time.time()
         while True:
             out = q.get()[2]
-            t0 = time.time()
             #print("OUT,", len(list(q.queue)), out)
             if out[1] == end[1]: #operator.eq(out[1], end[1])
                 break
+            if time.time() - t0 > 4:
+                raise TimeoutError
             visited_nodes_pos.add(out[1])
+            #print("append list cost", time.time()-t0)
             #t_append = time.time()
-            # print("append list cost", t_append-t0)
             kids = find_kids(out, visited_nodes_pos, bitmap, explored_nodes_pos)  # kid = (father, (row, column))
             find_kids_time = time.time()
-            # print("  find_kids cost ", find_kids_time - t_append)
+            #print("  find_kids cost ", find_kids_time - t_append)
             append_kids(q, kids, end, explored_nodes_pos)
-            # print("append kids cost", time.time()-find_kids_time)
-            # print("1 iteration cost", time.time() - t0)
+            #print("append kids cost", time.time()-find_kids_time)
+            #print("1 iteration cost", time.time() - t0)
         fin_path = []
         find_fin_path(fin_path, out)
         fin_path.reverse()

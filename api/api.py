@@ -430,7 +430,7 @@ class CSAPI:
         e_pos = to_pos_list
         e_posx = e_pos[0]
         e_posy = e_pos[1]
-        e_posz = e_pos[2] #- random.randint(0, 20)
+        e_posz = e_pos[2] -6 #- random.randint(0, 20)
         targetline1 = e_posx - posx
         targetline2 = e_posy - posy
         targetline3 = e_posz - posz
@@ -439,9 +439,9 @@ class CSAPI:
         if targetline2 == 0 and targetline1 == 0:
             yaw = 0
             if targetline3 > 0:
-                pitch = 270
+                pitch = 269
             else:
-                pitch = 90
+                pitch = 89
         else:
             yaw = (math.atan2(targetline2, targetline1) * 180 / math.pi)
             if yaw < 0:
@@ -590,7 +590,10 @@ class CSAPI:
                 print("stop walk for enemy spotted/dead")
                 return False
         d = distance.euclidean(to_pos_list[0:2], self.get_current_position()[0:2])
+        t0 = time.time()
         while d > 40:
+            if time.time()-t0 > 4:
+                raise TimeoutError
             for end in ends:
                 if end():
                     for do in do_list:
@@ -652,9 +655,9 @@ class CSAPI:
         if targetline2 == 0 and targetline1 == 0:
             yaw = 0
             if targetline3 > 0:
-                pitch = 270
+                pitch = 269
             else:
-                pitch = 90
+                pitch = 89
         else:
             yaw = (math.atan2(targetline2, targetline1) * 180 / math.pi)
             if yaw < 0:
@@ -997,7 +1000,7 @@ class CSAPI:
 
         if len(enemy) != 0:
             # 如果在准星里 射击
-            self.set_aim_to(enemy, smooth=3.7)
+            self.set_aim_to(enemy, smooth=3.7) #3.7
             if self.crosshair_id():
                 print("shoot enemy", enemy)
                 self.set_attack(6)
