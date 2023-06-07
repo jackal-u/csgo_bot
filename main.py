@@ -48,13 +48,15 @@ def get_nearest_way_point(way_points: list, cur: tuple):
     return way_points[dis.index(min(dis))], dis.index(min(dis))
 
 
-from route import main as path_find
+from route import AstarSolver, RRTSolver,BiRRTSolver
 import numpy as np
 
 
 class Bot(object):
     def __init__(self, map: map_grid.Map, handle:api.CSAPI):
         self.path = []
+        #self.solver = BiRRTSolver(map_=map)
+        self.solver = AstarSolver(map_=map)
         self.handle = handle
         self.map = map
         self.bit_map, self.dx, self.dy, self.point1 = map.bit_map, map.dx, map.dy, map.point1
@@ -114,9 +116,9 @@ class Bot(object):
             return
         for desti in self.way_points:
             self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
-            start, end = ((-1, -1), self.cur_pos), ((-1, -1), desti)
+            start, end = self.cur_pos, desti
             print("rounting ", self.cur_pos, "to", desti)
-            self.path = path_find.solve_maze_a_star(start, end, self.bit_map)
+            self.path = self.solver.solve_maze(start,end)
             self.draw_routes()
             for each in self.path:
                 x, y = self.bit_map[(each[0], each[1], 1)], self.bit_map[(each[0], each[1], 2)]
@@ -131,11 +133,8 @@ class Bot(object):
         return True
 
     def plant(self):
-        window_handle = win32gui.FindWindow(None, u"Counter-Strike: Global Offensive - Direct3D 9")
-        win32gui.SetForegroundWindow(window_handle)
-        t0 = time.time()
-        while time.time() - t0 < 4.5:
-            keyboard.press("e")
+        keyboard.press("e")
+        time.sleep(5)
         keyboard.release("e")
 
     def defuse(self):
@@ -161,9 +160,9 @@ class Bot(object):
         desti = bomb_site
         # walk
         self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
-        start, end = ((-1, -1), self.cur_pos), ((-1, -1), desti)
+        start, end =  self.cur_pos, desti
         print("rounting ", self.cur_pos, "to", desti)
-        self.path = path_find.solve_maze_a_star(start, end, self.bit_map)
+        self.path = self.solver.solve_maze(start,end)
         if self.is_new_round():
             self.draw_routes()
             return
@@ -188,9 +187,9 @@ class Bot(object):
         desti = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1, custome=c4_location)
         # walk
         self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
-        start, end = ((-1, -1), self.cur_pos), ((-1, -1), desti)
+        start, end = self.cur_pos, desti
         print("rounting ", self.cur_pos, "to", desti)
-        self.path = path_find.solve_maze_a_star(start, end, self.bit_map)
+        self.path = self.solver.solve_maze(start,end)
         self.draw_routes()
         for each in self.path:
             x, y = self.bit_map[(each[0], each[1], 1)], self.bit_map[(each[0], each[1], 2)]
@@ -215,9 +214,9 @@ class Bot(object):
         desti = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1, custome=c4_location)
         # walk
         self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
-        start, end = ((-1, -1), self.cur_pos), ((-1, -1), desti)
+        start, end = self.cur_pos, desti
         print("rounting ", self.cur_pos, "to", desti)
-        self.path = path_find.solve_maze_a_star(start, end, self.bit_map)
+        self.path = self.solver.solve_maze(start,end)
         self.draw_routes()
         for each in self.path:
             x, y = self.bit_map[(each[0], each[1], 1)], self.bit_map[(each[0], each[1], 2)]
@@ -265,7 +264,14 @@ if __name__ == "__main__":
 
     # 玩具代码，尽管把玩随便改。 很多实现由于鄙人水平原因有些笨拙，各位有兴趣可以自己用FSM写一个。
     # 地图抽象是依靠一张网图，如果出现bot 日墙，可能是地图精准不够。 你可以重新定位一下。在map类中找新坐标便可。
+    """
+    qtepn69725
+    qfuq18360Z
+    """
+
     while True:
+        if keyboard.is_pressed("q"):
+            exit()
         bot.draw_routes()
         try:
             bot.update_bot()
@@ -278,8 +284,8 @@ if __name__ == "__main__":
                 bot.reroute()
                 continue
             bot.draw_routes()
-            #bot.patrol()
-            bot.act()
+            bot.patrol()
+            #bot.act()
         except:
             import traceback
             traceback.print_exc()

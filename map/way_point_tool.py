@@ -71,6 +71,11 @@ if __name__ == "__main__":
 
     # close the window
     cv2.destroyAllWindows()
+
+    # 根据玩家点击位置，采用扩散算法，生成可行区
+
+
+
     with open(conf_path, "w") as f:
         conf["way_points"] = points
         json.dump(conf, f)
