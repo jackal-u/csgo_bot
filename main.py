@@ -1,54 +1,15 @@
+import threading
+from utils import gui
 import keyboard
 import win32gui
 
 from api import api
 from map import map_grid
 from route import main as route
+from utils import *
 import time, cv2
 import random
-
-
-
-def find_nearst_pos(handle, bit_map, dx, dy, point1, custome = False):
-    """
-    与point1的相对位置 对dx dy 取余数，得到当前index
-    当前index为中心的8个点，取最近的非障碍点为最终位置
-    :param handle: API
-    :param dx:
-    :param dy:
-    :param point1: [x, y , [index_x,index_y]]
-    :return: i_r, i_c
-    """
-    if not custome:
-        # 没有说明 默认返回当前玩家位置
-        pos = handle.get_current_position()
-        i_c = int((pos[0] - point1[0]) // dx + point1[2][1] + 1)
-        i_r = int((pos[1] - point1[1]) // dy + point1[2][0] + 1)
-        pos = route.find_kids(((-1, -1), (i_r, i_c)), [], bit_map,[])[1]
-        if int(bit_map[(i_r, i_c, 0)]) == 0:
-            print("NULL POSITION")
-        return int(pos[1][0]), int(pos[1][1])
-    else:
-        # 说明了目标位置，则找寻符合要求的最近点
-        pos = custome
-        i_c = int((pos[0] - point1[0]) // dx + point1[2][1] + 1)
-        i_r = int((pos[1] - point1[1]) // dy + point1[2][0] + 1)
-        pos = route.find_kids(((-1, -1), (i_r, i_c)), [], bit_map, [])[1]
-        if int(bit_map[(i_r, i_c, 0)]) == 0:
-            print("NULL POSITION")
-        return int(pos[1][0]), int(pos[1][1])
-
-
-def get_nearest_way_point(way_points: list, cur: tuple):
-    print("get_nearest_way_point")
-    dis = [route.manhattan(cur, point) for point in way_points]
-    print("dis", dis)
-    print("way_points", way_points)
-    print("give", way_points[dis.index(min(dis))], dis.index(min(dis)))
-    return way_points[dis.index(min(dis))], dis.index(min(dis))
-
-
-from route import AstarSolver, RRTSolver,BiRRTSolver
+from route import AstarSolver, RRTSolver, BiRRTSolver
 import numpy as np
 
 
@@ -60,6 +21,7 @@ class Bot(object):
         self.handle = handle
         self.map = map
         self.bit_map, self.dx, self.dy, self.point1 = map.bit_map, map.dx, map.dy, map.point1
+        self.perception = self.bit_map[:, :, 0]*150
         way = [tuple(each) for each in map.way_points]
         way.reverse() if random.random() > 0.5 else 1
         self.way_points = way  # way.reverse() if random.random()>0.5 else way
@@ -81,28 +43,27 @@ class Bot(object):
         self.c4onme = self.handle.is_c4_on_me()
 
     def draw_routes(self):
-        # get map
         img_np = self.bit_map[:, :, 0]
         way_points_np = np.zeros(img_np.shape)
         path_np = np.zeros(img_np.shape)
         # draw waypoints
         for each in self.way_points:
-            way_points_np[each] = 250
-
+            way_points_np[each] = 2
         # draw path
         for each in self.path:
-            path_np[each] = 100
+            path_np[each] = 3
         # draw me
-        way_points_np[self.cur_pos] = 200
-
-        img = np.stack([way_points_np,  path_np, img_np], axis=2)
-        imS = cv2.resize(img, (500, 500))  # Resize image.
-        cv2.imshow("output", imS)
-        if cv2.waitKey(25) and 0xFF == ord("q"):
-            cv2.destroyAllWindows()
+        way_points_np[self.cur_pos] = 4
+        img = img_np + path_np + way_points_np
+        img =np.clip(img, 0, 4)
+        # 0-4 障礙物0 空閑區1 路点2 路徑3 自己4
+        color = np.array([[138,138,138],[0,0,0],[10,255,108],[255,235,20],[245,67,22]])
+        img = color[img.astype(int)]
+        #imS = cv2.resize(img, (500, 500))  # Resize image.
+        self.perception = img
 
     def reroute(self):
-        print("rerote")
+        print("reroute")
         near, near_index = get_nearest_way_point(self.way_points, self.cur_pos)
         way_points = self.way_points[near_index:-1] + self.way_points[0:near_index+1]
         self.way_points = way_points
@@ -160,7 +121,7 @@ class Bot(object):
         desti = bomb_site
         # walk
         self.cur_pos = find_nearst_pos(handle, self.bit_map, self.dx, self.dy, self.point1)
-        start, end =  self.cur_pos, desti
+        start, end = self.cur_pos, desti
         print("rounting ", self.cur_pos, "to", desti)
         self.path = self.solver.solve_maze(start,end)
         if self.is_new_round():
@@ -254,13 +215,41 @@ class Bot(object):
         else:
             self.ct()
 
+    def run(self):
+        self.should_stop = False
+        while True:
+            if self.should_stop or keyboard.is_pressed("q"):
+                exit()
+            bot.draw_routes()
+            try:
+                bot.update_bot()
+                if not bot.is_alive:
+                    print("im dead, reroute")
+                    bot.reroute()
+                    continue
+                if bot.is_seeing_enemy:
+                    bot.handle.shoot()
+                    bot.reroute()
+                    continue
+                bot.draw_routes()
+                bot.patrol()
+                # bot.act()
+            except:
+                import traceback
+                traceback.print_exc()
+                pass
+    def stop(self):
+        self.should_stop = True
+
 
 if __name__ == "__main__":
     handle = api.CSAPI(r"./api/csgo.json")
+    print("waiting for game to start")
     de_dust2 = map_grid.Map("de_dust2")
     time.sleep(0.1)
     bot = Bot(de_dust2, handle)
-    round = 0
+    gui = GUI(bot)
+    gui.mainloop()
 
     # 玩具代码，尽管把玩随便改。 很多实现由于鄙人水平原因有些笨拙，各位有兴趣可以自己用FSM写一个。
     # 地图抽象是依靠一张网图，如果出现bot 日墙，可能是地图精准不够。 你可以重新定位一下。在map类中找新坐标便可。
@@ -269,24 +258,3 @@ if __name__ == "__main__":
     qfuq18360Z
     """
 
-    while True:
-        if keyboard.is_pressed("q"):
-            exit()
-        bot.draw_routes()
-        try:
-            bot.update_bot()
-            if not bot.is_alive:
-                print("im dead, reroute")
-                bot.reroute()
-                continue
-            if bot.is_seeing_enemy:
-                bot.handle.shoot()
-                bot.reroute()
-                continue
-            bot.draw_routes()
-            bot.patrol()
-            #bot.act()
-        except:
-            import traceback
-            traceback.print_exc()
-            pass
