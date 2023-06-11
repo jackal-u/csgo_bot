@@ -81,7 +81,7 @@ class AstarSolver:
             q.put(val)
             explored_nodes_pos.add(each[1])
 
-    def draw_routes(self, solution: List[Tuple[int, int]], bit_map: np.array, show:bool=True) -> np.array:
+    def draw_routes(self, solution: List[Tuple[int, int]], bit_map: np.array, show:bool=False) -> np.array:
         ## get map
         img_np = bit_map[:, :, 0]
         way_points_np = np.zeros(img_np.shape)
@@ -103,7 +103,7 @@ class AstarSolver:
             import matplotlib.pyplot as plt
             plt.imshow(imS)
             plt.show()
-            cv2.imshow("output", imS)
+            cv2.imshow("output VIEW", imS)
             if cv2.waitKey() and 0xFF == ord("q"):
                 cv2.destroyAllWindows()
 

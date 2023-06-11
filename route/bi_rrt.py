@@ -120,7 +120,7 @@ class BiRRTSolver:
         return distances_l, nodes_l  # todo:111
 
 
-    def draw_routes(self, solution: List[Tuple[int, int]], bit_map: np.array, show: bool = True) -> np.array:
+    def draw_routes(self, solution: List[Tuple[int, int]], bit_map: np.array, show: bool = False) -> np.array:
         ## get map
         img_np = bit_map[:, :, 0]
         way_points_np = np.zeros(img_np.shape)
