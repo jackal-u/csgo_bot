@@ -5,8 +5,8 @@
 1.调试好游戏环境
 
     游戏窗口化
-    游戏切换为de_cache地图的死亡竞赛经典模式
-    控制台输入 mp_roundtime 60; mp_restartgame 1;
+    游戏切换为de_dust2地图的死亡竞赛经典模式
+    控制台输入 mp_roundtime 60; mp_restartgame 1;(可选。如在服务器中游玩则不用，仅方便测试环节)
 
 2.开启bot
 
